@@ -225,7 +225,7 @@ def x_star(cell_grid, start, goal, update_fun):
 f_name = "grids/grid_10"
 if __name__ == "__main__":
     grid, start, goal = parse_8n_grid(f_name)    
-    closed, cost, parent = x_star(grid, start, goal, update_vertex_theta_star)
+    closed, cost, parent = x_star(grid, start, goal, update_vertex_a_star)
     path = []
     curr_v = goal
     while curr_v != start:
