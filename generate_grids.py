@@ -34,10 +34,9 @@ def generate_grids(n, w, h):
             grid = np.zeros((h, w))
             for x in range(grid.shape[1]):
                 for y in range(grid.shape[0]):
-                    grid[y, x] = 0 if random.randint(0, 9) < 5 else 1
+                    grid[y, x] = 0 if random.randint(0, 9) < 8 else 1
             start = Point(random.randint(0, w), random.randint(0, h))
             goal = Point(random.randint(0, w), random.randint(0, h))
-            print("hi", start, goal)
             while goal == start:
                 goal = Point(random.randint(0, w), random.randint(0, h))
             valid = valid_path(grid, start, goal)
@@ -50,6 +49,6 @@ def generate_grids(n, w, h):
                     f.write(f"\n{x+1} {y+1} {int(grid[y, x])}")
 
 if __name__ == "__main__":
-    generate_grids(50, 100, 50)
+    generate_grids(50, 30, 30)
 
         

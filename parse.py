@@ -3,20 +3,19 @@ import numpy as np
 from tkinter import Tk, Canvas, Frame, BOTH, LAST
 from math import sqrt
 
-from util import Point, Fringe
+from util import Point, Fringe, FastFringe
 
 def parse_8n_grid(filename):
     with open(filename) as f:
         lines = f.read().split("\n")
         start_line = lines[0].split(" ")
-        start_vertex = Point(int(start_line[0]), int(start_line[1]))
+        start_vertex = Point(int(start_line[0])-1, int(start_line[1])-1)
         end_line = lines[1].split(" ")
-        end_vertex = Point(int(end_line[0]), int(end_line[1]))
+        end_vertex = Point(int(end_line[0])-1, int(end_line[1])-1)
         dim_line = lines[2].split(" ")
         grid_dimensions = (int(dim_line[1]), int(dim_line[0]))
         grid = np.zeros(grid_dimensions)
         for line in lines[3:]:
-            print(line)
             vals = line.split(" ")
             x = int(vals[0])
             y = int(vals[1])
@@ -123,6 +122,9 @@ def display_grid(cell_grid, path, start, goal, cost, parent, closed):
 def h(v, g):
     return sqrt(2)*min(abs(v.x-g.x), abs(v.y-g.y)) + max(abs(v.x-g.x), abs(v.y-g.y)) - min(abs(v.x-g.x), (v.y-g.y))
 
+def h2(v, g):
+    return v.dist(g)
+
 def update_vertex_a_star(parent, child, cost, parent_map, fringe, goal, cell_grid):
     if cost[parent.y, parent.x] + parent.dist(child) < cost[child.y, child.x]:
         cost[child.y, child.x] = cost[parent.y, parent.x] + parent.dist(child) 
@@ -133,8 +135,8 @@ def update_vertex_a_star(parent, child, cost, parent_map, fringe, goal, cell_gri
 
 def line_of_sight(parent, child, cell_grid):
     f = 0
-    p0 = Point(parent.x, parent.y)
-    p1 = Point(child.x, child.y)
+    p0 = Point(parent.x+1, parent.y+1)
+    p1 = Point(child.x+1, child.y+1)
     d = p1-p0
     s = Point(1, 1)
     if d.y < 0:
@@ -176,28 +178,28 @@ def line_of_sight(parent, child, cell_grid):
 def update_vertex_theta_star(parent, child, cost, parent_map, fringe, goal, cell_grid):
     grand_parent = parent_map[parent.y, parent.x, :]
     grand_parent = Point(grand_parent[0], grand_parent[1])
-    if line_of_sight(grand_parent, child, cell_grid):
+    if line_of_sight(grand_parent, child, np.pad(cell_grid, 1, 'constant', constant_values=1)):
         if cost[grand_parent.y, grand_parent.x] + grand_parent.dist(child) < cost[child.y, child.x]:
             cost[child.y, child.x] = cost[grand_parent.y, grand_parent.x] + grand_parent.dist(child)
             parent_map[child.y, child.x, :] = (grand_parent.x, grand_parent.y)
             if child in fringe:
                 fringe.remove(child)
-            fringe.insert(child, cost[child.y, child.x] + h(child, goal))
+            fringe.insert(child, cost[child.y, child.x] + h2(child, goal))
     else:
         if cost[parent.y, parent.x] + parent.dist(child) < cost[child.y, child.x]:
             cost[child.y, child.x] = cost[parent.y, parent.x] + parent.dist(child) 
             parent_map[child.y, child.x] = (parent.x, parent.y)
             if child in fringe:
                 fringe.remove(child)
-            fringe.insert(child, cost[child.y, child.x] + h(child, goal))
+            fringe.insert(child, cost[child.y, child.x] + h2(child, goal))
 
 
 #Can be either a* or theta* depending on the update function passed in
-def x_star(cell_grid, start, goal, update_fun):
+def x_star(cell_grid, start, goal, update_fun, use_fast_fringe = False, h_fun=h):
     graph, adjacency_dict, adjacency_grid, adjacency_lookup = get_vertex_edges(cell_grid)
     cost = np.zeros(graph.shape)
     cost[start.y, start.x] = 0
-    fringe = Fringe()
+    fringe = FastFringe() if use_fast_fringe else Fringe()
     fringe.insert(start, cost[start.y, start.x] + h(start, goal))
     parent = np.zeros((graph.shape[0], graph.shape[1], 2), dtype=np.int32)
     parent[start.y, start.x] = (start.x, start.y)
@@ -220,6 +222,15 @@ def x_star(cell_grid, start, goal, update_fun):
                 update_fun(v[0], n, cost, parent, fringe, goal, cell_grid)
     return closed, "No Path", None
 
+def get_path_len(parent, goal, start):
+    length = 0
+    curr_v = goal
+    while curr_v != start:
+        parent_v = parent[curr_v.y, curr_v.x, :]
+        parent_v = Point(int(parent_v[0]), int(parent_v[1]))
+        length = length + curr_v.dist(parent_v)
+        curr_v = parent_v
+    return length    
 
 
 f_name = "grids/grid_10"
@@ -234,4 +245,6 @@ if __name__ == "__main__":
         curr_v = Point(int(parent_v[0]), int(parent_v[1]))
     path.insert(0, curr_v)
     display_grid(grid, path, start, goal, cost, parent, closed)
+
+
 
